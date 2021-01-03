@@ -131,4 +131,36 @@ public class TaskServlet extends HttpServlet {
 
         }
     }
+
+    @Override
+    protected void doPut(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
+        String uid = req.getParameter("uid");
+        BasicDataSource cp = (BasicDataSource) getServletContext().getAttribute("cp");
+        Jsonb jsonb = JsonbBuilder.create();
+        Task task = jsonb.fromJson(req.getReader(), Task.class);
+
+        System.out.println(task);
+
+
+        try {
+            Connection connection = cp.getConnection();
+            PreparedStatement pstm = connection.prepareStatement("UPDATE Task SET taskDesc=?, taskPriority=?, completed=? WHERE user_id=? && id=?");
+            pstm.setObject(1,task.getText());
+            pstm.setObject(2,task.getPriority());
+            pstm.setObject(3,task.isCompleted()? 1:0);
+            pstm.setObject(4,uid);
+            pstm.setObject(5,task.getId());
+
+            if(pstm.executeUpdate()>0){
+                resp.setStatus(HttpServletResponse.SC_NO_CONTENT);
+            }else{
+                resp.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+            }
+
+        } catch (SQLException throwables) {
+            resp.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
+            throwables.printStackTrace();
+        }
+
+    }
 }
