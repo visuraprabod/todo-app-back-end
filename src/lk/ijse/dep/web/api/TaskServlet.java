@@ -10,6 +10,7 @@ import javax.servlet.annotation.WebServlet;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
+import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.sql.Connection;
@@ -23,6 +24,50 @@ import java.util.List;
 public class TaskServlet extends HttpServlet {
 
     protected void doPost(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
+        String uid = request.getParameter("uid");
+
+        BufferedReader reader = request.getReader();
+        Jsonb jsonb = JsonbBuilder.create();
+        Task task = jsonb.fromJson(reader, Task.class);
+
+
+        BasicDataSource cp = (BasicDataSource) getServletContext().getAttribute("cp");
+        try {
+            Connection connection = cp.getConnection();
+            PreparedStatement pstm = connection.prepareStatement("SELECT * FROM Task WHERE user_id=? ORDER BY id DESC LIMIT 1");
+            pstm.setObject(1,uid);
+            ResultSet resultSet = pstm.executeQuery();
+            String tid = null;
+            if(resultSet.next()){
+                System.out.println(resultSet.getString(1));
+                tid = resultSet.getString(1);
+                int id = Integer.parseInt(tid.substring(1, 4));
+                tid = String.format("T%03d", ++id);
+
+                pstm = connection.prepareStatement("INSERT INTO Task VALUES (?,?,?,?,?)");
+                pstm.setObject(1,tid);
+                pstm.setObject(2,uid);
+                pstm.setObject(3,task.getText());
+                pstm.setObject(4,task.getPriority());
+                pstm.setObject(5,0);
+
+                if(pstm.executeUpdate()>0){
+                    response.setStatus(HttpServletResponse.SC_CREATED);
+                    PrintWriter writer = response.getWriter();
+                    writer.write(tid);
+                    writer.close();
+                }else{
+                    response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
+                }
+
+            }else{
+                response.setStatus(HttpServletResponse.SC_NOT_FOUND);
+            }
+            connection.close();
+        } catch (SQLException throwables) {
+            response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
+            throwables.printStackTrace();
+        }
 
     }
 
@@ -37,7 +82,7 @@ public class TaskServlet extends HttpServlet {
             pstm.setObject(1, uid);
             ResultSet resultSet = pstm.executeQuery();
             while (resultSet.next()) {
-                boolean completed = resultSet.getString(5).equals("0");
+                boolean completed = resultSet.getString(5).equals("1");
                 taskList.add(new Task(resultSet.getString(1), resultSet.getString(3),completed, resultSet.getInt(4)));
             }
 
@@ -62,7 +107,28 @@ public class TaskServlet extends HttpServlet {
     protected void doDelete(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
         String id = req.getParameter("id");
         System.out.println(id);
+        String uid = req.getParameter("uid");
+        System.out.println(uid);
 
-        resp.setStatus(HttpServletResponse.SC_NO_CONTENT);
+        BasicDataSource cp = (BasicDataSource) getServletContext().getAttribute("cp");
+        Connection connection = null;
+        try {
+            connection = cp.getConnection();
+            PreparedStatement pstm = connection.prepareStatement("DELETE FROM TASK WHERE user_id=? && id=?");
+            pstm.setObject(1,uid);
+            pstm.setObject(2,id);
+            if(pstm.executeUpdate()>0){
+                resp.setStatus(HttpServletResponse.SC_NO_CONTENT);
+            }else{
+                resp.setStatus(HttpServletResponse.SC_NOT_FOUND);
+            }
+
+            connection.close();
+
+        } catch (SQLException throwables) {
+            resp.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
+            throwables.printStackTrace();
+
+        }
     }
 }

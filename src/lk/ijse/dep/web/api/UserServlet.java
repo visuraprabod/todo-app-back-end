@@ -26,7 +26,7 @@ public class UserServlet extends HttpServlet {
     protected void doPost(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
         ServletContext servletContext = this.getServletContext();
         BasicDataSource cp = (BasicDataSource) servletContext.getAttribute("cp");
-        String contentType = req.getContentType();
+//        String contentType = req.getContentType();
 //        if(contentType.equals("application/json")){
             BufferedReader reader = req.getReader();
             Jsonb jsonb = JsonbBuilder.create();
@@ -55,7 +55,7 @@ public class UserServlet extends HttpServlet {
             pstm.setString(3, user.getEmail());
             pstm.setString(4, user.getPassword());
            if(pstm.executeUpdate()>0){
-               System.out.println("Update una");
+//               System.out.println("Update una");
                resp.setStatus(HttpServletResponse.SC_NO_CONTENT);
            };
 
@@ -79,13 +79,11 @@ public class UserServlet extends HttpServlet {
             ResultSet rst = pstm.executeQuery();
             if(rst.next()){
                 String uid = rst.getString(1);
-                System.out.println(uid);
-
                 resp.setContentType("text/plain");
                 PrintWriter writer = resp.getWriter();
                 writer.write(uid);
                 writer.close();
-
+                connection.close();
             }else{
                 resp.sendError(HttpServletResponse.SC_NOT_FOUND);
             }

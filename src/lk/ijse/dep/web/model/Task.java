@@ -20,7 +20,7 @@ public class Task {
 
     @Override
     public String toString() {
-        return "TaskTest{" +
+        return "Task{" +
                 "id='" + id + '\'' +
                 ", text='" + text + '\'' +
                 ", completed=" + completed +
